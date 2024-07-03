@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import jakarta.ws.rs.*;
 import org.apache.commons.lang3.StringUtils;
 
 import com.codahale.metrics.MetricRegistry;
@@ -35,12 +36,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -69,54 +64,86 @@ public class AdminREST {
 			description = "Save or update a user. If the id is not specified, a new user will be created")
 	@Timed
 	public Response adminSaveUser(@Parameter(hidden = true) @SecurityCheck(Role.ADMIN) User user,
-			@Parameter(required = true) AdminSaveUserRequest req) {
+								  @Parameter(required = true) AdminSaveUserRequest req) {
 		Preconditions.checkNotNull(req);
 		Preconditions.checkNotNull(req.getName());
 
-		Long id = req.getId();
-		if (id == null) {
-			Preconditions.checkNotNull(req.getPassword());
-
-			Set<Role> roles = Sets.newHashSet(Role.USER);
-			if (req.isAdmin()) {
-				roles.add(Role.ADMIN);
-			}
-			try {
-				userService.register(req.getName(), req.getPassword(), req.getEmail(), roles, true);
-			} catch (Exception e) {
-				return Response.status(Status.CONFLICT).entity(e.getMessage()).build();
-			}
+		if (req.getId() == null) {
+			return handleNewUser(req);
 		} else {
-			if (req.getId().equals(user.getId()) && !req.isEnabled()) {
-				return Response.status(Status.FORBIDDEN).entity("You cannot disable your own account.").build();
-			}
+			return handleExistingUser(user, req);
+		}
+	}
 
-			User u = userDAO.findById(id);
-			u.setName(req.getName());
-			if (StringUtils.isNotBlank(req.getPassword())) {
-				u.setPassword(encryptionService.getEncryptedPassword(req.getPassword(), u.getSalt()));
-			}
-			u.setEmail(req.getEmail());
-			u.setDisabled(!req.isEnabled());
-			userDAO.saveOrUpdate(u);
+	private Response handleNewUser(AdminSaveUserRequest req) {
+		Preconditions.checkNotNull(req.getPassword());
 
-			Set<Role> roles = userRoleDAO.findRoles(u);
-			if (req.isAdmin() && !roles.contains(Role.ADMIN)) {
-				userRoleDAO.saveOrUpdate(new UserRole(u, Role.ADMIN));
-			} else if (!req.isAdmin() && roles.contains(Role.ADMIN)) {
-				if (CommaFeedApplication.USERNAME_ADMIN.equals(u.getName())) {
-					return Response.status(Status.FORBIDDEN).entity("You cannot remove the admin role from the admin user.").build();
-				}
-				for (UserRole userRole : userRoleDAO.findAll(u)) {
-					if (userRole.getRole() == Role.ADMIN) {
-						userRoleDAO.delete(userRole);
-					}
-				}
-			}
-
+		Set<Role> roles = getRolesForNewUser(req);
+		try {
+			userService.register(req.getName(), req.getPassword(), req.getEmail(), roles, true);
+		} catch (Exception e) {
+			return Response.status(Status.CONFLICT).entity(e.getMessage()).build();
 		}
 		return Response.ok().build();
+	}
 
+	private Set<Role> getRolesForNewUser(AdminSaveUserRequest req) {
+		Set<Role> roles = Sets.newHashSet(Role.USER);
+		if (req.isAdmin()) {
+			roles.add(Role.ADMIN);
+		}
+		return roles;
+	}
+
+	private Response handleExistingUser(User user, AdminSaveUserRequest req) {
+		if (isSelfDisabling(user, req)) {
+			return Response.status(Status.FORBIDDEN).entity("You cannot disable your own account.").build();
+		}
+
+		User u = updateUserDetails(req);
+		updateRoles(req, u);
+
+		return Response.ok().build();
+	}
+
+	private boolean isSelfDisabling(User user, AdminSaveUserRequest req) {
+		return req.getId().equals(user.getId()) && !req.isEnabled();
+	}
+
+	private User updateUserDetails(AdminSaveUserRequest req) {
+		User u = userDAO.findById(req.getId());
+		u.setName(req.getName());
+		if (StringUtils.isNotBlank(req.getPassword())) {
+			u.setPassword(encryptionService.getEncryptedPassword(req.getPassword(), u.getSalt()));
+		}
+		u.setEmail(req.getEmail());
+		u.setDisabled(!req.isEnabled());
+		userDAO.saveOrUpdate(u);
+		return u;
+	}
+
+	private void updateRoles(AdminSaveUserRequest req, User u) {
+		Set<Role> roles = userRoleDAO.findRoles(u);
+		if (req.isAdmin() && !roles.contains(Role.ADMIN)) {
+			userRoleDAO.saveOrUpdate(new UserRole(u, Role.ADMIN));
+		} else if (!req.isAdmin() && roles.contains(Role.ADMIN)) {
+			if (isAdminUser(u)) {
+				throw new WebApplicationException("You cannot remove the admin role from the admin user.", Status.FORBIDDEN);
+			}
+			removeAdminRole(u);
+		}
+	}
+
+	private boolean isAdminUser(User u) {
+		return CommaFeedApplication.USERNAME_ADMIN.equals(u.getName());
+	}
+
+	private void removeAdminRole(User u) {
+		for (UserRole userRole : userRoleDAO.findAll(u)) {
+			if (userRole.getRole() == Role.ADMIN) {
+				userRoleDAO.delete(userRole);
+			}
+		}
 	}
 
 	@Path("/user/get/{id}")
