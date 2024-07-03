@@ -4,30 +4,25 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
+import com.commafeed.backend.FixedSizeSortedList;
+import com.commafeed.backend.model.*;
+import com.google.common.collect.Ordering;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.hibernate.SessionFactory;
 
 import com.commafeed.CommaFeedConfiguration;
-import com.commafeed.backend.FixedSizeSortedList;
 import com.commafeed.backend.feed.FeedEntryKeyword;
 import com.commafeed.backend.feed.FeedEntryKeyword.Mode;
-import com.commafeed.backend.model.FeedEntry;
-import com.commafeed.backend.model.FeedEntryContent;
-import com.commafeed.backend.model.FeedEntryStatus;
-import com.commafeed.backend.model.FeedEntryTag;
-import com.commafeed.backend.model.FeedSubscription;
-import com.commafeed.backend.model.Models;
 import com.commafeed.backend.model.QFeedEntry;
 import com.commafeed.backend.model.QFeedEntryContent;
 import com.commafeed.backend.model.QFeedEntryStatus;
 import com.commafeed.backend.model.QFeedEntryTag;
-import com.commafeed.backend.model.User;
 import com.commafeed.backend.model.UserSettings.ReadingOrder;
 import com.commafeed.frontend.model.UnreadCount;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Ordering;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQuery;
@@ -114,16 +109,13 @@ public class FeedEntryStatusDAO extends GenericDAO<FeedEntryStatus> {
 		return lazyLoadContent(includeContent, statuses);
 	}
 
-	private JPAQuery<FeedEntry> buildQuery(User user, FeedSubscription sub, boolean unreadOnly, List<FeedEntryKeyword> keywords,
-			Instant newerThan, int offset, int limit, ReadingOrder order, FeedEntryStatus last, String tag, Long minEntryId,
-			Long maxEntryId) {
+	private JPAQuery<FeedEntry> buildQuery(QueryParams params) {
+		JPAQuery<FeedEntry> query = query().selectFrom(entry).where(entry.feed.eq(params.getSubscription().getFeed()));
 
-		JPAQuery<FeedEntry> query = query().selectFrom(entry).where(entry.feed.eq(sub.getFeed()));
-
-		if (CollectionUtils.isNotEmpty(keywords)) {
+		if (CollectionUtils.isNotEmpty(params.getKeywords())) {
 			query.join(entry.content, content);
 
-			for (FeedEntryKeyword keyword : keywords) {
+			for (FeedEntryKeyword keyword : params.getKeywords()) {
 				BooleanBuilder or = new BooleanBuilder();
 				or.or(content.content.containsIgnoreCase(keyword.getKeyword()));
 				or.or(content.title.containsIgnoreCase(keyword.getKeyword()));
@@ -133,9 +125,9 @@ public class FeedEntryStatusDAO extends GenericDAO<FeedEntryStatus> {
 				query.where(or);
 			}
 		}
-		query.leftJoin(entry.statuses, status).on(status.subscription.id.eq(sub.getId()));
+		query.leftJoin(entry.statuses, status).on(status.subscription.id.eq(params.getSubscription().getId()));
 
-		if (unreadOnly && tag == null) {
+		if (params.isUnreadOnly() && params.getTag() == null) {
 			BooleanBuilder or = new BooleanBuilder();
 			or.or(status.read.isNull());
 			or.or(status.read.isFalse());
@@ -147,47 +139,47 @@ public class FeedEntryStatusDAO extends GenericDAO<FeedEntryStatus> {
 			}
 		}
 
-		if (tag != null) {
+		if (params.getTag() != null) {
 			BooleanBuilder and = new BooleanBuilder();
-			and.and(entryTag.user.id.eq(user.getId()));
-			and.and(entryTag.name.eq(tag));
+			and.and(entryTag.user.id.eq(params.getUser().getId()));
+			and.and(entryTag.name.eq(params.getTag()));
 			query.join(entry.tags, entryTag).on(and);
 		}
 
-		if (newerThan != null) {
-			query.where(entry.inserted.goe(newerThan));
+		if (params.getNewerThan() != null) {
+			query.where(entry.inserted.goe(params.getNewerThan()));
 		}
 
-		if (minEntryId != null) {
-			query.where(entry.id.gt(minEntryId));
+		if (params.getMinEntryId() != null) {
+			query.where(entry.id.gt(params.getMinEntryId()));
 		}
 
-		if (maxEntryId != null) {
-			query.where(entry.id.lt(maxEntryId));
+		if (params.getMaxEntryId() != null) {
+			query.where(entry.id.lt(params.getMaxEntryId()));
 		}
 
-		if (last != null) {
-			if (order == ReadingOrder.desc) {
-				query.where(entry.updated.gt(last.getEntryUpdated()));
+		if (params.getLast() != null) {
+			if (params.getOrder() == ReadingOrder.desc) {
+				query.where(entry.updated.gt(params.getLast().getEntryUpdated()));
 			} else {
-				query.where(entry.updated.lt(last.getEntryUpdated()));
+				query.where(entry.updated.lt(params.getLast().getEntryUpdated()));
 			}
 		}
 
-		if (order != null) {
-			if (order == ReadingOrder.asc) {
+		if (params.getOrder() != null) {
+			if (params.getOrder() == ReadingOrder.asc) {
 				query.orderBy(entry.updated.asc(), entry.id.asc());
 			} else {
 				query.orderBy(entry.updated.desc(), entry.id.desc());
 			}
 		}
 
-		if (offset > -1) {
-			query.offset(offset);
+		if (params.getOffset() > -1) {
+			query.offset(params.getOffset());
 		}
 
-		if (limit > -1) {
-			query.limit(limit);
+		if (params.getLimit() > -1) {
+			query.limit(params.getLimit());
 		}
 
 		setTimeout(query, config.getApplicationSettings().getQueryTimeout());
@@ -204,8 +196,9 @@ public class FeedEntryStatusDAO extends GenericDAO<FeedEntryStatus> {
 		FixedSizeSortedList<FeedEntryStatus> fssl = new FixedSizeSortedList<>(capacity, comparator);
 		for (FeedSubscription sub : subs) {
 			FeedEntryStatus last = (order != null && fssl.isFull()) ? fssl.last() : null;
-			JPAQuery<FeedEntry> query = buildQuery(user, sub, unreadOnly, keywords, newerThan, -1, capacity, order, last, tag, minEntryId,
-					maxEntryId);
+			QueryParams params = new QueryParams(user, sub, unreadOnly, keywords, newerThan, offset, limit, order, last, tag, minEntryId, maxEntryId);
+			JPAQuery<FeedEntry> query = buildQuery(params);
+
 			List<Tuple> tuples = query.select(entry.id, entry.updated, status.id, entry.content.title).fetch();
 
 			for (Tuple tuple : tuples) {
@@ -258,7 +251,8 @@ public class FeedEntryStatusDAO extends GenericDAO<FeedEntryStatus> {
 
 	public UnreadCount getUnreadCount(User user, FeedSubscription subscription) {
 		UnreadCount uc = null;
-		JPAQuery<FeedEntry> query = buildQuery(user, subscription, true, null, null, -1, -1, null, null, null, null, null);
+		QueryParams params = new QueryParams(user, subscription, true, null, null, -1, -1, null, null, null, null, null);
+		JPAQuery<FeedEntry> query = buildQuery(params);
 		List<Tuple> tuples = query.select(entry.count(), entry.updated.max()).fetch();
 		for (Tuple tuple : tuples) {
 			Long count = tuple.get(entry.count());

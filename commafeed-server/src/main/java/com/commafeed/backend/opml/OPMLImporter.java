@@ -42,44 +42,59 @@ public class OPMLImporter {
 	}
 
 	private void handleOutline(User user, Outline outline, FeedCategory parent, int position) {
-		List<Outline> children = outline.getChildren();
-		if (CollectionUtils.isNotEmpty(children)) {
-			String name = FeedUtils.truncate(outline.getText(), 128);
-			if (name == null) {
-				name = FeedUtils.truncate(outline.getTitle(), 128);
-			}
-			FeedCategory category = feedCategoryDAO.findByName(user, name, parent);
-			if (category == null) {
-				if (StringUtils.isBlank(name)) {
-					name = "Unnamed category";
-				}
-
-				category = new FeedCategory();
-				category.setName(name);
-				category.setParent(parent);
-				category.setUser(user);
-				category.setPosition(position);
-				feedCategoryDAO.saveOrUpdate(category);
-			}
-
-			for (int i = 0; i < children.size(); i++) {
-				handleOutline(user, children.get(i), category, i);
-			}
+		if (CollectionUtils.isNotEmpty(outline.getChildren())) {
+			handleCategory(user, outline, parent, position);
 		} else {
-			String name = FeedUtils.truncate(outline.getText(), 128);
-			if (name == null) {
-				name = FeedUtils.truncate(outline.getTitle(), 128);
-			}
-			if (StringUtils.isBlank(name)) {
-				name = "Unnamed subscription";
-			}
-			// make sure we continue with the import process even if a feed failed
-			try {
-				feedSubscriptionService.subscribe(user, outline.getXmlUrl(), name, parent, position);
-			} catch (Exception e) {
-				log.error("error while importing {}: {}", outline.getXmlUrl(), e.getMessage());
-			}
+			handleSubscription(user, outline, parent, position);
 		}
 		cache.invalidateUserRootCategory(user);
+	}
+
+	private void handleCategory(User user, Outline outline, FeedCategory parent, int position) {
+		String name = getValidName(outline);
+		FeedCategory category = feedCategoryDAO.findByName(user, name, parent);
+
+		if (category == null) {
+			category = createCategory(user, name, parent, position);
+			feedCategoryDAO.saveOrUpdate(category);
+		}
+
+		List<Outline> children = outline.getChildren();
+		for (int i = 0; i < children.size(); i++) {
+			handleOutline(user, children.get(i), category, i);
+		}
+	}
+
+	private void handleSubscription(User user, Outline outline, FeedCategory parent, int position) {
+		String name = getValidName(outline);
+		if (StringUtils.isBlank(name)) {
+			name = "Unnamed subscription";
+		}
+
+		try {
+			feedSubscriptionService.subscribe(user, outline.getXmlUrl(), name, parent, position);
+		} catch (Exception e) {
+			log.error("Error while importing {}: {}", outline.getXmlUrl(), e.getMessage());
+		}
+	}
+
+	private String getValidName(Outline outline) {
+		String name = FeedUtils.truncate(outline.getText(), 128);
+		if (name == null) {
+			name = FeedUtils.truncate(outline.getTitle(), 128);
+		}
+		if (StringUtils.isBlank(name)) {
+			name = "Unnamed category";
+		}
+		return name;
+	}
+
+	private FeedCategory createCategory(User user, String name, FeedCategory parent, int position) {
+		FeedCategory category = new FeedCategory();
+		category.setName(name);
+		category.setParent(parent);
+		category.setUser(user);
+		category.setPosition(position);
+		return category;
 	}
 }
