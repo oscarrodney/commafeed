@@ -24,6 +24,19 @@ public class QueryParams {
     private Long maxEntryId;
 
     public QueryParams(User user, FeedSubscription sub, boolean unreadOnly, List<FeedEntryKeyword> keywords, Instant newerThan, int offset, int limit, UserSettings.ReadingOrder order, FeedEntryStatus last, String tag, Long minEntryId, Long maxEntryId) {
+        this.user = user;
+        this.subscription = sub;
+        this.unreadOnly = unreadOnly;
+        this.keywords = keywords;
+        this.newerThan = newerThan;
+        this.offset = offset;
+        this.limit = limit;
+        this.order = order;
+        this.last = last;
+        this.tag = tag;
+        this.minEntryId = minEntryId;
+        this.maxEntryId = maxEntryId;
+        
     }
 
     public User getUser() {

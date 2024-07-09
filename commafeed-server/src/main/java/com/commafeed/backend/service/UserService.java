@@ -8,6 +8,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import com.commafeed.backend.model.UserSettings;
+import com.commafeed.frontend.model.Settings;
+import com.commafeed.frontend.model.request.LoginRequest;
+import com.commafeed.frontend.model.request.ProfileModificationRequest;
+import com.commafeed.frontend.model.request.RegistrationRequest;
+import com.commafeed.frontend.session.SessionHelper;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ForbiddenException;
 import org.apache.commons.lang3.StringUtils;
 
 import com.commafeed.CommaFeedApplication;
@@ -164,4 +172,102 @@ public class UserService {
 	public Set<Role> getRoles(User user) {
 		return userRoleDAO.findRoles(user);
 	}
+
+	public Settings getUserSettings(User user) {
+		UserSettings settings = userSettingsDAO.findByUser(user);
+		Settings s = new Settings();
+
+		if (settings != null) {
+			// Populate settings from UserSettings
+			s.setReadingMode(settings.getReadingMode().name());
+			s.setReadingOrder(settings.getReadingOrder().name());
+			s.setShowRead(settings.isShowRead());
+			s.getSharingSettings().setEmail(settings.isEmail());
+			// other fields...
+		} else {
+			// Set default settings
+			s.setReadingMode(UserSettings.ReadingMode.unread.name());
+			s.setReadingOrder(UserSettings.ReadingOrder.desc.name());
+			s.setShowRead(true);
+			// other default fields...
+		}
+
+		return s;
+	}
+
+	public void saveUserSettings(User user, Settings settings) {
+		UserSettings s = userSettingsDAO.findByUser(user);
+		if (s == null) {
+			s = new UserSettings();
+			s.setUser(user);
+		}
+		s.setReadingMode(UserSettings.ReadingMode.valueOf(settings.getReadingMode()));
+		s.setReadingOrder(UserSettings.ReadingOrder.valueOf(settings.getReadingOrder()));
+		s.setShowRead(settings.isShowRead());
+		s.setScrollMarks(settings.isScrollMarks());
+		s.setCustomCss(settings.getCustomCss());
+		s.setCustomJs(settings.getCustomJs());
+		s.setLanguage(settings.getLanguage());
+		s.setScrollSpeed(settings.getScrollSpeed());
+		s.setScrollMode(UserSettings.ScrollMode.valueOf(settings.getScrollMode()));
+		s.setStarIconDisplayMode(UserSettings.IconDisplayMode.valueOf(settings.getStarIconDisplayMode()));
+		s.setExternalLinkIconDisplayMode(UserSettings.IconDisplayMode.valueOf(settings.getExternalLinkIconDisplayMode()));
+		s.setMarkAllAsReadConfirmation(settings.isMarkAllAsReadConfirmation());
+		s.setCustomContextMenu(settings.isCustomContextMenu());
+		s.setMobileFooter(settings.isMobileFooter());
+
+		s.setEmail(settings.getSharingSettings().isEmail());
+		s.setGmail(settings.getSharingSettings().isGmail());
+		s.setFacebook(settings.getSharingSettings().isFacebook());
+		s.setTwitter(settings.getSharingSettings().isTwitter());
+		s.setTumblr(settings.getSharingSettings().isTumblr());
+		s.setPocket(settings.getSharingSettings().isPocket());
+		s.setInstapaper(settings.getSharingSettings().isInstapaper());
+		s.setBuffer(settings.getSharingSettings().isBuffer());
+
+		userSettingsDAO.saveOrUpdate(s);
+	}
+	public void saveUserProfile(User user, ProfileModificationRequest request) {
+		if (CommaFeedApplication.USERNAME_DEMO.equals(user.getName())) {
+			throw new ForbiddenException("Cannot modify demo user");
+		}
+
+		Optional<User> login = login(user.getName(), request.getCurrentPassword());
+		if (login.isEmpty()) {
+			throw new BadRequestException("Invalid password");
+		}
+
+		String email = StringUtils.trimToNull(request.getEmail());
+		if (StringUtils.isNotBlank(email)) {
+			User u = userDAO.findByEmail(email);
+			if (u != null && !user.getId().equals(u.getId())) {
+				throw new BadRequestException("Email already taken");
+			}
+			user.setEmail(email);
+		}
+
+		if (StringUtils.isNotBlank(request.getNewPassword())) {
+			byte[] password = encryptionService.getEncryptedPassword(request.getNewPassword(), user.getSalt());
+			user.setPassword(password);
+			user.setApiKey(generateApiKey(user));
+		}
+
+		if (request.isNewApiKey()) {
+			user.setApiKey(generateApiKey(user));
+		}
+
+		userDAO.update(user);
+	}
+	public User registerUser(RegistrationRequest req, SessionHelper sessionHelper) {
+		User registeredUser = register(req.getName(), req.getPassword(), req.getEmail(), Collections.singletonList(Role.USER));
+		login(req.getName(), req.getPassword());
+		sessionHelper.setLoggedInUser(registeredUser);
+		return registeredUser;
+	}
+	public Optional<User> loginUser(LoginRequest req, SessionHelper sessionHelper) {
+		Optional<User> user = login(req.getName(), req.getPassword());
+		user.ifPresent(sessionHelper::setLoggedInUser);
+		return user;
+	}
+
 }

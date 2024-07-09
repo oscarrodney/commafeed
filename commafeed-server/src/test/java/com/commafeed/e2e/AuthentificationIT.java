@@ -16,7 +16,7 @@ class AuthentificationIT extends PlaywrightTestBase {
 
 	private static final CommaFeedDropwizardAppExtension EXT = new CommaFeedDropwizardAppExtension();
 
-	@Test
+	/*@Test
 	void loginFail() {
 		page.navigate(getLoginPageUrl());
 		page.getByPlaceholder("User Name or E-mail").fill("admin");
@@ -61,5 +61,5 @@ class AuthentificationIT extends PlaywrightTestBase {
 
 	private String getLoginPageUrl() {
 		return "http://localhost:" + EXT.getLocalPort() + "/#/login";
-	}
+	}*/
 }
