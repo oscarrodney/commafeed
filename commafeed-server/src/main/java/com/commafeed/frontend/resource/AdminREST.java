@@ -70,7 +70,7 @@ public class AdminREST {
 			description = "Save or update a user. If the id is not specified, a new user will be created")
 	@Timed
 	public Response adminSaveUser(@Parameter(hidden = true) @SecurityCheck(Role.ADMIN) User user,
-								  @Parameter(required = true) AdminSaveUserRequest req) {
+			@Parameter(required = true) AdminSaveUserRequest req) {
 		Preconditions.checkNotNull(req);
 		Preconditions.checkNotNull(req.getName());
 

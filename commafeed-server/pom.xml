@@ -164,6 +164,13 @@
 					<execution>
 						<phase>validate</phase>
 						<goals>
+							<goal>apply</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>check-spotless</id>
+						<phase>validate</phase>
+						<goals>
 							<goal>check</goal>
 						</goals>
 					</execution>

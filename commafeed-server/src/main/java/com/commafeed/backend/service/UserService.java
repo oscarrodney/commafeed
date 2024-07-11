@@ -227,6 +227,7 @@ public class UserService {
 
 		userSettingsDAO.saveOrUpdate(s);
 	}
+
 	public void saveUserProfile(User user, ProfileModificationRequest request) {
 		if (CommaFeedApplication.USERNAME_DEMO.equals(user.getName())) {
 			throw new ForbiddenException("Cannot modify demo user");
@@ -258,12 +259,14 @@ public class UserService {
 
 		userDAO.update(user);
 	}
+
 	public User registerUser(RegistrationRequest req, SessionHelper sessionHelper) {
 		User registeredUser = register(req.getName(), req.getPassword(), req.getEmail(), Collections.singletonList(Role.USER));
 		login(req.getName(), req.getPassword());
 		sessionHelper.setLoggedInUser(registeredUser);
 		return registeredUser;
 	}
+
 	public Optional<User> loginUser(LoginRequest req, SessionHelper sessionHelper) {
 		Optional<User> user = login(req.getName(), req.getPassword());
 		user.ifPresent(sessionHelper::setLoggedInUser);

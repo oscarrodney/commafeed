@@ -24,14 +24,14 @@ class AuthentificationIT extends PlaywrightTestBase {
 		page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Log in")).click();
 		PlaywrightAssertions.assertThat(page.getByRole(AriaRole.ALERT)).containsText("wrong username or password");
 	}
-
+	
 	@Test
 	void loginSuccess() {
 		page.navigate(getLoginPageUrl());
 		PlaywrightTestUtils.login(page);
 		PlaywrightAssertions.assertThat(page).hasURL("http://localhost:" + EXT.getLocalPort() + "/#/app/category/all");
 	}
-
+	
 	@Test
 	void registerFailPasswordTooSimple() {
 		page.navigate(getLoginPageUrl());
@@ -40,14 +40,14 @@ class AuthentificationIT extends PlaywrightTestBase {
 		page.getByPlaceholder("E-mail address").fill("user@domain.com");
 		page.getByPlaceholder("Password").fill("pass");
 		page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign up")).click();
-
+	
 		Locator alert = page.getByRole(AriaRole.ALERT);
 		PlaywrightAssertions.assertThat(alert).containsText("Password must be 8 or more characters in length.");
 		PlaywrightAssertions.assertThat(alert).containsText("Password must contain 1 or more uppercase characters.");
 		PlaywrightAssertions.assertThat(alert).containsText("Password must contain 1 or more digit characters.");
 		PlaywrightAssertions.assertThat(alert).containsText("Password must contain 1 or more special characters.");
 	}
-
+	
 	@Test
 	void registerSuccess() {
 		page.navigate(getLoginPageUrl());
@@ -58,7 +58,7 @@ class AuthentificationIT extends PlaywrightTestBase {
 		page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign up")).click();
 		PlaywrightAssertions.assertThat(page).hasURL("http://localhost:" + EXT.getLocalPort() + "/#/app/category/all");
 	}
-
+	
 	private String getLoginPageUrl() {
 		return "http://localhost:" + EXT.getLocalPort() + "/#/login";
 	}*/

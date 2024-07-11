@@ -33,7 +33,6 @@ import com.google.common.collect.Iterables;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQuery;
-import com.google.common.collect.Ordering;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -204,7 +203,8 @@ public class FeedEntryStatusDAO extends GenericDAO<FeedEntryStatus> {
 		FixedSizeSortedList<FeedEntryStatus> fssl = new FixedSizeSortedList<>(capacity, comparator);
 		for (FeedSubscription sub : subs) {
 			FeedEntryStatus last = (order != null && fssl.isFull()) ? fssl.last() : null;
-			QueryParams params = new QueryParams(user, sub, unreadOnly, keywords, newerThan, offset, limit, order, last, tag, minEntryId, maxEntryId);
+			QueryParams params = new QueryParams(user, sub, unreadOnly, keywords, newerThan, offset, limit, order, last, tag, minEntryId,
+					maxEntryId);
 			JPAQuery<FeedEntry> query = buildQuery(params);
 
 			List<Tuple> tuples = query.select(entry.id, entry.updated, status.id, entry.content.title).fetch();

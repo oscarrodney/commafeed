@@ -126,7 +126,7 @@ public class UserREST {
 	@Operation(summary = "Save user's profile")
 	@Timed
 	public Response saveUserProfile(@Parameter(hidden = true) @SecurityCheck User user,
-									@Valid @Parameter(required = true) ProfileModificationRequest request) {
+			@Valid @Parameter(required = true) ProfileModificationRequest request) {
 		try {
 			userService.saveUserProfile(user, request);
 			return Response.ok().build();
@@ -143,7 +143,7 @@ public class UserREST {
 	@Operation(summary = "Register a new account")
 	@Timed
 	public Response registerUser(@Valid @Parameter(required = true) RegistrationRequest req,
-								 @Context @Parameter(hidden = true) SessionHelper sessionHelper) {
+			@Context @Parameter(hidden = true) SessionHelper sessionHelper) {
 		try {
 			userService.registerUser(req, sessionHelper);
 			return Response.ok().build();
@@ -158,7 +158,7 @@ public class UserREST {
 	@Operation(summary = "Login and create a session")
 	@Timed
 	public Response login(@Valid @Parameter(required = true) LoginRequest req,
-						  @Parameter(hidden = true) @Context SessionHelper sessionHelper) {
+			@Parameter(hidden = true) @Context SessionHelper sessionHelper) {
 		Optional<User> user = userService.loginUser(req, sessionHelper);
 		if (user.isPresent()) {
 			return Response.ok().build();

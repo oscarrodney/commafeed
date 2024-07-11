@@ -32,6 +32,7 @@ class UserRestTest {
 	PasswordEncryptionService passwordEncryptionService;
 	MailService mailService;
 	CommaFeedConfiguration config;
+
 	@BeforeEach
 	void setup() {
 		// Mock the dependencies of UserService
@@ -46,16 +47,8 @@ class UserRestTest {
 		mailService = Mockito.mock(MailService.class);
 
 		// Create a spy for UserService with mocked dependencies
-		service = Mockito.spy(new UserService(
-				feedCategoryDAO,
-				feedSubscriptionDAO,
-				userDAO,
-				userRoleDAO,
-				userSettingsDAO,
-				passwordEncryptionService,
-				config,
-				postLoginActivities
-		));
+		service = Mockito.spy(new UserService(feedCategoryDAO, feedSubscriptionDAO, userDAO, userRoleDAO, userSettingsDAO,
+				passwordEncryptionService, config, postLoginActivities));
 
 		req = new RegistrationRequest();
 		req.setName("user");
@@ -89,7 +82,6 @@ class UserRestTest {
 		// Create a user
 		User user = new User();
 
-
 		Mockito.when(service.login("user", "password")).thenReturn(Optional.of(user));
 
 		LoginRequest loginRequest = new LoginRequest();
@@ -106,7 +98,6 @@ class UserRestTest {
 
 	@Test
 	void registerShouldRegisterAndThenLogin() {
-
 
 		InOrder inOrder = Mockito.inOrder(service);
 
@@ -136,8 +127,9 @@ class UserRestTest {
 		user.setName("user");
 
 		// Mock the register and login methods within the spy
-		Mockito.doReturn(user).when(service).register(Mockito.any(String.class), Mockito.any(String.class), Mockito.any(String.class),
-				ArgumentMatchers.anyList());
+		Mockito.doReturn(user)
+				.when(service)
+				.register(Mockito.any(String.class), Mockito.any(String.class), Mockito.any(String.class), ArgumentMatchers.anyList());
 		Mockito.doReturn(Optional.of(user)).when(service).login(Mockito.any(String.class), Mockito.any(String.class));
 
 		SessionHelper sessionHelper = mock(SessionHelper.class);
