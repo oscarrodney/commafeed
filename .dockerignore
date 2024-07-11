@@ -2,5 +2,16 @@
 *
 
 # allow only what we need
-!commafeed-server/target/commafeed.jar
+!pom.xml
+!commafeed-client/pom.xml
+!commafeed-client/src/
+!commafeed-client/package.json
+!commafeed-client/package-lock.json
+!commafeed-client/tsconfig.json
+!commafeed-client/tsconfig.node.json
+!commafeed-client/index.html
+!commafeed-client/vite.config.ts
+!commafeed-client/lingui.config.js
+!commafeed-server/pom.xml
+!commafeed-server/src/
 !commafeed-server/config.yml.example

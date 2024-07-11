@@ -1,6 +1,6 @@
-import { createAppAsyncThunk } from "app/async-thunk"
-import { Constants } from "app/constants"
-import { redirectTo } from "app/redirect/slice"
+import { createAppAsyncThunk } from "../../app/async-thunk";
+import { Constants } from "../../app/constants";
+import { redirectTo } from "./slice";
 
 export const redirectToLogin = createAppAsyncThunk("redirect/login", (_, thunkApi) => thunkApi.dispatch(redirectTo("/login")))
 export const redirectToRegistration = createAppAsyncThunk("redirect/register", (_, thunkApi) => thunkApi.dispatch(redirectTo("/register")))

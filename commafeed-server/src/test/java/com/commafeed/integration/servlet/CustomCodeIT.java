@@ -44,4 +44,5 @@ class CustomCodeIT extends BaseIT {
 			Assertions.assertEquals("custom-css", response.readEntity(String.class));
 		}
 	}
+
 }
