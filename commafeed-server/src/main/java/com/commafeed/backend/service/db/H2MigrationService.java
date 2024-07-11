@@ -58,6 +58,10 @@ public class H2MigrationService {
 		Path newVersionPath = path.resolveSibling(path.getFileName() + "." + getPatchVersion(toVersion) + ".mv.db");
 		Path oldVersionBackupPath = path.resolveSibling(path.getFileName() + "." + getPatchVersion(fromVersion) + ".backup");
 
+		log.debug("Script path: {}", scriptPath);
+		log.debug("New version path: {}", newVersionPath);
+		log.debug("Old version backup path: {}", oldVersionBackupPath);
+
 		Files.deleteIfExists(scriptPath);
 		Files.deleteIfExists(newVersionPath);
 		Files.deleteIfExists(oldVersionBackupPath);

@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
 
@@ -10,13 +9,6 @@
 	</parent>
 	<artifactId>commafeed-client</artifactId>
 	<name>CommaFeed Client</name>
-
-	<properties>
-		<!-- renovate: datasource=node-version depName=node -->
-		<node.version>v20.15.0</node.version>
-		<!-- renovate: datasource=npm depName=npm -->
-		<npm.version>10.8.1</npm.version>
-	</properties>
 
 	<build>
 		<plugins>
@@ -33,8 +25,8 @@
 						</goals>
 						<phase>compile</phase>
 						<configuration>
-							<nodeVersion>${node.version}</nodeVersion>
-							<npmVersion>${npm.version}</npmVersion>
+							<nodeVersion>v20.10.0</nodeVersion>
+							<npmVersion>10.2.5</npmVersion>
 						</configuration>
 					</execution>
 					<execution>
